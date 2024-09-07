@@ -1,4 +1,4 @@
-import {addContact, getContactById, listContacts, removeContact, updatingContact} from "../services/contactsServices.js";
+import {addContact, getContactById, listContacts, removeContact, updateStatusById, updatingContact} from "../services/contactsServices.js";
 import {catchAsync} from '../helpers/catchAsync.js';
 import HttpError from "../helpers/HttpError.js";
 
@@ -35,6 +35,18 @@ export const updateContact = catchAsync(async (req, res) => {
     if(Object.keys(req.body).length === 0) throw HttpError(400, 'Body must have at least one field');
 
     const result = await updatingContact(id, req.body);
+
+    if(!result) throw HttpError(404);
+
+    res.status(200).json(result);
+});
+
+export const updateContactStatus = catchAsync(async (req, res) => {
+    const {id} = req.params;
+
+    if(Object.keys(req.body).length === 0) throw HttpError(400, 'Body must have at least one field');
+
+    const result = await updateStatusById(id, req.body);
 
     if(!result) throw HttpError(404);
 
