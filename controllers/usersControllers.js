@@ -6,10 +6,12 @@ import fs from 'fs/promises';
 
 import HttpError from "../helpers/HttpError.js";
 import { catchAsync } from "../helpers/catchAsync.js";
-import { addUser, getUserByEmail, updateUser } from "../services/usersServices.js";
+import { addUser, getUserByEmail, updateUser, verifyUser } from "../services/usersServices.js";
 import jwt from 'jsonwebtoken';
 import Jimp from 'jimp';
 import { nanoid } from 'nanoid';
+import {sendEmail} from '../helpers/sendEmail.js';
+import { verifyEmailAgainTemplate, verifyEmailTemplate } from '../helpers/verifyPresets.js';
 
 const { SECRET_KEY } = process.env;
 
@@ -25,7 +27,11 @@ export const register = catchAsync(async (req, res) => {
 
   const hashPassword = await bcrypt.hash(password, 8);
 
-  const newUser = await addUser({ ...req.body, password: hashPassword, avatarURL: avatar });
+  const verificationToken = nanoid();
+
+  const newUser = await addUser({ ...req.body, password: hashPassword, avatarURL: avatar, verificationToken });
+
+  sendEmail(verifyEmailTemplate(email, req, verificationToken));
 
   res.status(201).json({
     "user": {
@@ -40,6 +46,8 @@ export const login = catchAsync(async (req, res) => {
 
   const user = await getUserByEmail(email);
   if (!user) throw HttpError(401, "Email or password is wrong");
+
+  if(!user.verify) throw HttpError(401, "Email is not verified!");
 
   const checkPassword = await bcrypt.compare(password, user.password);
   if (!checkPassword) throw HttpError(401, "Email or password is wrong");
@@ -98,4 +106,25 @@ export const updateAvatar = catchAsync(async (req, res) => {
   if(!user) throw HttpError(401);
 
   return res.json(avatarURL);
+});
+
+export const verify = catchAsync(async (req, res) => {
+  const {verificationToken} = req.params;
+
+  const user = await verifyUser({verificationToken}, {verificationToken: null, verify: true});
+  if(!user) throw HttpError(404, "User not Found!");
+
+  res.json("Verification successful!");
+});
+
+export const verifyAgain = catchAsync(async (req, res) => {
+  const {email} = req.body;
+
+  const user = await getUserByEmail(email);
+  if (!user) throw HttpError(404, "User not Found!");
+
+  if(user.verify) throw HttpError(200, "User already verified!");
+
+    sendEmail(verifyEmailAgainTemplate(email, req, user.verificationToken));
+    res.json("Verification token was sent");
 });

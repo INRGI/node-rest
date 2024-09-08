@@ -15,3 +15,7 @@ export async function addUser(body){
 export async function updateUser(id, body){
     return User.findByIdAndUpdate(id, body);
 }
+
+export async function verifyUser(token, body){
+    return User.findOneAndUpdate(token, body);
+}
