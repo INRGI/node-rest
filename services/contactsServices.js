@@ -1,3 +1,4 @@
+import HttpError from '../helpers/HttpError.js';
 import {Contact} from '../models/contactModels.js';
 
 export async function listContacts() {
@@ -13,6 +14,12 @@ export async function removeContact(contactId) {
 }
 
 export async function addContact(body) {
+  const existingContact = await Contact.findOne({email: body.email});
+
+  if (existingContact) {
+    return HttpError(409)
+  }
+
   return Contact.create(body);
 }
 
